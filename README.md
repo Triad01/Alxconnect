@@ -1,2 +1,3 @@
 # AlxConnect
-This is the readme file... Would be updated soon!
+
+A social presence for ALX student and alumi
