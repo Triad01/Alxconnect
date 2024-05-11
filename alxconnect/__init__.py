@@ -1,8 +1,22 @@
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 
 
 app = Flask("__name__")
 app.template_folder = "alxconnect/templates"
+app.static_folder = "alxconnect/static"
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///alxconnect.db"
+
+
+# Base class for all models
+class Base(DeclarativeBase):
+    pass
+
+
+db = SQLAlchemy(model_class=Base)
+db.init_app(app)
 
 
 class Route:
