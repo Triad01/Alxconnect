@@ -1,1 +1,4 @@
-alxcon_env
+.venv
+__pycache__
+
+instance/

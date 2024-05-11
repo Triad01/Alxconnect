@@ -1,0 +1,6 @@
+{%extends "base.html" %} {% block content %} {% for post in posts %}
+<div>
+  <p>This is post by {{post.user}} at {{post.created_at}}</p>
+  <p>{{post.post}}</p>
+</div>
+{% endfor %} {% endblock content%}

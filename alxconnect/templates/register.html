@@ -1,0 +1,22 @@
+{%extends "base.html" %} {% block content %}
+<div>
+  <h1>Join AlxConnet Today!</h1>
+</div>
+<form>
+  <div>
+    <input type="text" placeholder="username" />
+  </div>
+  <div>
+    <input type="email" placeholder="Email or phone number" />
+  </div>
+  <div>
+    <input type="text" placeholder="password" />
+  </div>
+  <div>
+    <input type="text" placeholder="confirm password" />
+  </div>
+  <div>
+    Already have an account? <a href="{{url_for('login')}}">login in</a>
+  </div>
+</form>
+{% endblock content %}
