@@ -24,7 +24,7 @@ def test():
 def register():
     form = RegisterationForm()
     if form.validate_on_submit():
-        flash(f"Account successfully created for {form.username.data}", "success")
+        flash(f"Account successfully created for {form.username.data}!", "success")
         return redirect(url_for("home"))
 
     return render_template("register.html",  title="Register", form = form);
@@ -35,7 +35,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         if form.email.data == "test@gmail.com" and form.password.data == "12345":
-            flash("Login successful", "success")
+            flash("Login successful!", "success")
             return redirect(url_for('home'))
         else:
             flash("login failed")
