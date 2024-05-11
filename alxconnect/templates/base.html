@@ -7,7 +7,32 @@
     <title>{{title}}</title>
   </head>
   <body class="bg-slate-400">
+    <header class="bg-black h-20 text-white flex justify-around pt-5">
+      <div>
+        <a
+          class="bg-gray-500 hover:bg-gray-700 p-2 rounded-sm"
+          href="{{url_for('register')}}"
+          >Register</a
+        >
+      </div>
+      <div>
+        <a
+          class="bg-gray-500 hover:bg-gray-700 p-2 rounded-sm"
+          href="{{url_for('login')}}"
+          >Login</a
+        >
+      </div>
+    </header>
     <h1 class="text-center text-3xl mt-4">welcome to AlxConnet</h1>
+    <div class="col-md-8">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %} {% if category ==
+      "success" %}
+      <div class="bg-green-400">{{ message }}</div>
+      {% else %}
+      <div class="bg-red-400">{{ message }}</div>
+      {% endif %} {% endfor %} {% endif %} {% endwith %}
+    </div>
     {% block content %} {% endblock content %}
   </body>
 </html>
