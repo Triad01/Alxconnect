@@ -3,6 +3,7 @@ from flask import Flask
 
 app = Flask("__name__")
 app.template_folder = "alxconnect/templates"
+app.config["SECRET_KEY"] = "f8861cba917f7384690f3ada0ccd9a4e"
 
 
 class Route:
