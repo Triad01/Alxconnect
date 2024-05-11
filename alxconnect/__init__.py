@@ -1,10 +1,10 @@
 from flask import Flask
+import os
 
 
 app = Flask("__name__")
 app.template_folder = "alxconnect/templates"
-app.config["SECRET_KEY"] = "f8861cba917f7384690f3ada0ccd9a4e"
-
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 
 class Route:
     """Importing the routes module
