@@ -9,12 +9,6 @@ app.template_folder = "alxconnect/templates"
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SQLALCHEMY_DATABASE_URI"]= os.environ.get("SQLALCHEMY_DATABASE_URL")
 
-app = Flask("__name__")
-app.template_folder = "alxconnect/templates"
-app.static_folder = "alxconnect/static"
-
-
-
 
 # Base class for all models
 class Base(DeclarativeBase):
