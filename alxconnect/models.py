@@ -16,8 +16,11 @@ class User(db.Model):
     joined_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # RELATIONSHIP
-    posts = db.relationship("Post", backref="author", lazy=True)
-    comments = db.relationship("Comment", backref="author", lazy=True)
+    posts = db.relationship("Post", backref="user",
+                            lazy=True, cascade="all, delete, delete-orphan")
+    comments = db.relationship(
+        "Comment", backref="user", lazy=True, cascade="all, delete, delete-orphan")
+
     """Not yet Implemented"""
 
     # course = db.relationship("Course", backref="user", lazy=True)
@@ -38,13 +41,23 @@ class Post(db.Model):
                            default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False,
                            default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    comments = db.relationship("Comment", backref="post", lazy=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    comments = db.relationship(
+        "Comment", backref="post", lazy=True)
+
     """Not yet implemented"""
 
     # likes = db.relationship("Like", backref="post", lazy=True)
-    # content = db.Column(db.Text, nullable=False)
+
     # image = db.Column(db.String(20), nullable=False, default="default.jpg")
+
+    def __init__(self, user_id, content) -> None:
+        self.user_id = user_id
+        self.content = content
+
+    def __repr__(self) -> str:
+        return f"{self.content}"
 
 
 class Comment(db.Model):
