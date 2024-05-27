@@ -1,7 +1,13 @@
 {%extends "base.html" %} {% block content %} {% for post in posts %}
 
 <div>
-  <p>This is post by {{post.user}} at {{post.created_at}}</p>
+  <p>This is post by {{post.user}} at {{ moment(post.created_at).format('MMMM Do YYYY, h:mm:ss a') }}</p>
   <p>{{post.post}}</p>
+  <p>To now</p>
+  <p>Ypo posted {{ moment(post.created_at).toNow() }}</p>
+  <p>FromNow</p>
+  <p>Ypo posted {{ moment(post.created_at).fromNow() }}</p>
+  <p>fa-calendar</p>
+  <p>Ypo posted {{ moment(post.created_at).diff(post.created_at, "seconds") }}</p>
 </div>
 {% endfor %} {% endblock content%}
