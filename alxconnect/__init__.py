@@ -3,12 +3,16 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from alxconnect.config import Config
 from flask_moment import Moment
-
+from alxconnect.blueprints.about.about import about_view
+from alxconnect.blueprints.login.login import login_view
+from alxconnect.blueprints.register.register import register_view
 
 app = Flask("__name__")
 app.template_folder = "alxconnect/templates"
 app.config.from_object(Config)
-moment = Moment(app)
+app.register_blueprint(about_view)
+app.register_blueprint(login_view)
+app.register_blueprint(register_view)
 
 # Base class for all models
 
@@ -25,5 +29,7 @@ class Route:
     """Importing the routes module
     from alxconnect import routes
     to stop circular importation"""
-    from alxconnect import routes
+    from alxconnect import routes, models
+    from alxconnect.blueprints.login.login import login
+    from alxconnect.blueprints.register.register import register
     pass
