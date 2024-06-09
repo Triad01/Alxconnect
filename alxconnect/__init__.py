@@ -2,7 +2,6 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from alxconnect.config import Config
-from flask_moment import Moment
 from alxconnect.blueprints.about.about import about_view
 from alxconnect.blueprints.login.login import login_view
 from alxconnect.blueprints.register.register import register_view
