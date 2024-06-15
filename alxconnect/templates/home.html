@@ -1,14 +1,13 @@
 {%extends "base.html" %} {% block content %} {% for post in posts %}
-
+<h1>Welcome {{current_user.username}}</h1>
 <div>
-  <p>This is post by {{post.user}} at {{post.created_at}}</p>
+  <p>This is post by {{post.user}} at {{ post.created_at}}</p>
   <p>{{post.post}}</p>
   <p>To now</p>
-  <p>Ypo posted {{ (post.created_at) }}</p>
+  <p>Ypo posted {{ post.created_at}}</p>
   <p>FromNow</p>
-  <p>Ypo posted {{ (post.created_at) }}</p>
+  <p>Ypo posted {{ post.created_at }}</p>
   <p>fa-calendar</p>
-  <p>Ypo posted {{ (post.created_at) }}</p>
-  <h1>Work in progress</h1>
+  <p>Ypo posted {{ post.created_at }}</p>
 </div>
 {% endfor %} {% endblock content%}

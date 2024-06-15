@@ -12,33 +12,6 @@
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script> -->
   </head>
   <body>
-    <header class="bg-black h-20 text-white flex justify-around pt-5">
-      {%if not current_user.is_authenticated %}
-      <div>
-        <a
-          class="bg-gray-500 hover:bg-gray-700 p-2 rounded-sm"
-          href="{{url_for('register_view.register')}}"
-          >Register</a
-        >
-      </div>
-      <div>
-        <a
-          class="bg-gray-500 hover:bg-gray-700 p-2 rounded-sm"
-          href="{{url_for('login_view.login')}}"
-          >Login</a
-        >
-      </div>
-      {%else%}
-      <div>
-        <a
-          class="bg-gray-500 hover:bg-gray-700 p-2 rounded-sm"
-          href="{{url_for('login_view.logout')}}"
-          >Logout</a
-        >
-      </div>
-      {%endif%}
-    </header>
-    <h1 class="text-center text-3xl mt-4">welcome to AlxConnet</h1>
     <div class="col-md-8">
       {% with messages = get_flashed_messages(with_categories=true) %} {% if
       messages %} {% for category, message in messages %} {% if category ==

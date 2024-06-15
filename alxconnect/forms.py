@@ -5,6 +5,11 @@ from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationE
 
 
 class RegisterationForm(FlaskForm):
+    firstname = StringField("Firstname", validators=[
+                           DataRequired(), Length(min=2, max=20)])
+
+    lastname = StringField("Lastname", validators=[
+                           DataRequired(), Length(min=2, max=20)])
     username = StringField("Username", validators=[
                            DataRequired(), Length(min=2, max=20)])
     email = StringField("Email", validators=[DataRequired(), Email()])
@@ -14,16 +19,16 @@ class RegisterationForm(FlaskForm):
     submit = SubmitField("Sign up")
 
     # Custom validation for username and email
-    # # if username or email already exists in the database
-    # def validate_username(self, username):
-    #     user = User.query.filter_by(username=username.data).first()
-    #     if user:
-    #         raise ValidationError("Username already taken")
+    # if username or email already exists in the database
+    def validate_username(self, username):
+        user = User.query.filter_by(username=username.data).first()
+        if user:
+            raise ValidationError("Username already taken")
 
-    # def validate_email(self, email):
-    #     user = User.query.filter_by(email=email.data).first()
-    #     if user:
-    #         raise ValidationError("Email already taken")
+    def validate_email(self, email):
+        user = User.query.filter_by(email=email.data).first()
+        if user:
+            raise ValidationError("Email already taken")
 
 
 class LoginForm(FlaskForm):
