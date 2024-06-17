@@ -7,7 +7,31 @@ from flask_login import UserMixin
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-class User(db.Model, UserMixin):
+
+class BaseModel:
+    """BaseModel For Other Models"""
+
+    def save(self):
+        """Saves the the database
+        """
+        db.session.add(self)
+        db.session.commit()
+
+    def to_json(self):
+        """Convert instance into dict format"""
+        dictionary = {}
+        for key in self.__mapper__.c.keys():
+            value = getattr(self, key)
+            if key == "password":
+                continue
+            if isinstance(value, datetime):
+                dictionary[key] = value.isoformat()
+            else:
+                dictionary[key] = value
+        return dictionary
+
+
+class User(db.Model, UserMixin, BaseModel):
     """User model for the database"""
     id = db.Column(db.Integer, primary_key=True)
     firstname = db.Column(db.String(60), nullable=False)
@@ -48,7 +72,7 @@ class User(db.Model, UserMixin):
         return f"User([{self.firstname} {self.lastname}] username: {self.username}, email: {self.email})"
 
 
-class Post(db.Model):
+class Post(db.Model, BaseModel):
     """Post model for the database"""
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, nullable=False,
@@ -74,7 +98,7 @@ class Post(db.Model):
         return f"{self.content}"
 
 
-class Comment(db.Model):
+class Comment(db.Model, BaseModel):
     """Comment model for the database"""
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, nullable=False,
@@ -93,7 +117,7 @@ class Comment(db.Model):
         return f"Content: {self.content} Likes: {self.likes}"
 
 
-class Notification(db.Model):
+class Notification(db.Model, BaseModel):
     """Notification model for the database"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
