@@ -29,6 +29,7 @@ class BaseModel:
         db.session.commit()
 
     def rollback():
+        """Rollback a database commit incase of errors"""
         db.session.rollback()
 
     def to_json(self):
@@ -46,7 +47,9 @@ class BaseModel:
 
 
 class User(db.Model, UserMixin, BaseModel):
-    """User model for the database"""
+    """
+        User model for the database
+    """
     id = db.Column(db.Integer, primary_key=True)
     firstname = db.Column(db.String(60), nullable=False)
     lastname = db.Column(db.String(60), nullable=False)
@@ -63,13 +66,13 @@ class User(db.Model, UserMixin, BaseModel):
     posts = db.relationship("Post", backref="user",
                             lazy=True, cascade="all, delete, delete-orphan")
     comments = db.relationship(
-        "Comment", backref="user", lazy=True, cascade="all, delete, delete-orphan")
-    course = db.relationship("Course", backref="user",
-                             lazy=True, cascade="all, delete, delete-orphan")
-    notifications = db.relationship(
-        "Notification", backref="user", lazy=True, cascade="all, delete, delete-orphan")
+        "Comment", backref="user", lazy="dynamic", cascade="all, delete, delete-orphan")
 
     """Not Yet Implemented"""
+    # course = db.relationship("Course", backref="user",
+    #                          lazy=True, cascade="all, delete, delete-orphan")
+    # notifications = db.relationship(
+    #     "Notification", backref="user", lazy=True, cascade="all, delete, delete-orphan")
     # followers = db.relationship(
     #     "Followers", backref="user", lazy=True, cascade="all, delete, delete-orphan")
     # message = db.relationship(
@@ -89,14 +92,14 @@ class User(db.Model, UserMixin, BaseModel):
 class Post(db.Model, BaseModel):
     """Post model for the database"""
     id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    comments = db.relationship(
+        "Comment", backref="post", lazy="dynamic", cascade="all, delete, delete-orphan")
     created_at = db.Column(db.DateTime, nullable=False,
                            default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False,
                            default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    comments = db.relationship(
-        "Comment", backref="post", lazy=True, cascade="all, delete, delete-orphan")
 
     """Not yet implemented"""
 
@@ -115,12 +118,12 @@ class Post(db.Model, BaseModel):
 class Comment(db.Model, BaseModel):
     """Comment model for the database"""
     id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"))
+    likes = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, nullable=False,
                            default=datetime.utcnow)
-    post_id = db.Column(db.Integer, db.ForeignKey("post.id"))
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    likes = db.Column(db.Integer)
-    content = db.Column(db.Text, nullable=False)
 
     def __init__(self, post_id, user_id, content) -> None:
         self.post_id = post_id

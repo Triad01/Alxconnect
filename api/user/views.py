@@ -2,7 +2,7 @@
 from flask_restx import Namespace, Resource, fields, abort
 from sqlalchemy.exc import SQLAlchemyError
 from flask import request
-user_api = Namespace("users", description="Returns all The user")
+user_api = Namespace("users", description="User Api Routes", ordered=True)
 
 create_user_model = user_api.model("CreateUser", {
     "firstname": fields.String(required=True, description="Enter Your FirstName"),
@@ -20,7 +20,7 @@ put_model = user_api.model("UpdateUser", {
 })
 
 
-@user_api.route("/")
+@user_api.route("/", strict_slashes=False)
 class Get_Post_User(Resource):
 
     """
@@ -51,7 +51,7 @@ class Get_Post_User(Resource):
         return user.to_json(), 201
 
 
-@user_api.route("/<int:user_id>")
+@user_api.route("/<int:user_id>", strict_slashes=False)
 class Get_A_User(Resource):
 
     """
@@ -67,7 +67,7 @@ class Get_A_User(Resource):
         user = User.query.get(user_id)
         if not user:
             abort(404, message="Enter a valid id")
-        return user.to_json()
+        return user.to_json(), 200
 
     def delete(self, user_id):
         """Deletes a User"""
@@ -77,11 +77,11 @@ class Get_A_User(Resource):
         if not user:
             abort(404, message="Enter a valid id")
         user.delete()
-        return {}, 201
+        return {"message": "Deleted successfully"}, 201
 
     @user_api.expect(put_model)
     @user_api.response(201, description="Succesfully updated")
-    def put(self, user_id):
+    def patch(self, user_id):
         """Updates a User"""
         from alxconnect.models import User
         # check if user is available
@@ -94,7 +94,7 @@ class Get_A_User(Resource):
             abort(400, message="Enter valid data")
         try:
             for key, value in data.items():
-                if value is None or value == "string":
+                if value == "" or value == "string":
                     continue
                 if hasattr(user, key):
                     setattr(user, key, value)
