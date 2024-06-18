@@ -12,10 +12,24 @@ class BaseModel:
     """BaseModel For Other Models"""
 
     def save(self):
-        """Saves the the database
+        """Saves a model to the database
         """
         db.session.add(self)
         db.session.commit()
+
+    def delete(self):
+        """Deletes the a model instance from the database"""
+        db.session.delete(self)
+        db.session.commit()
+
+    def update(self):
+        """Update a Model instance in the database"""
+        # db.session.merge(self)
+        self.verified = True
+        db.session.commit()
+
+    def rollback():
+        db.session.rollback()
 
     def to_json(self):
         """Convert instance into dict format"""
