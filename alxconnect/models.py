@@ -131,7 +131,7 @@ class Comment(db.Model, BaseModel):
         self.content = content
 
     def __repr__(self) -> str:
-        return f"Content: {self.content} Likes: {self.likes}"
+        return f"Content: {self.content}"
 
 
 class Notification(db.Model, BaseModel):
