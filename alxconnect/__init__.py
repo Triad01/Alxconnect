@@ -16,7 +16,7 @@ from alxconnect.blueprints.errors.errors import error_handlers_view
 
 app = Flask("__name__", template_folder="alxconnect/templates",
             static_folder="alxconnect/static")
-CORS(app)
+cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}})
 app.template_folder = "alxconnect/templates"
 app.config.from_object(Config)
 app.register_blueprint(about_view)
