@@ -5,6 +5,7 @@ from sqlalchemy.orm import DeclarativeBase
 from alxconnect.config import Config
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
+from flask_cors import CORS
 
 
 # Blueprints Modules/Pakages
@@ -15,6 +16,7 @@ from alxconnect.blueprints.errors.errors import error_handlers_view
 
 app = Flask("__name__", template_folder="alxconnect/templates",
             static_folder="alxconnect/static")
+cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}})
 app.template_folder = "alxconnect/templates"
 app.config.from_object(Config)
 app.register_blueprint(about_view)

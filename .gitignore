@@ -4,3 +4,4 @@ __pycache__
 instance/
 ALXENV
 venv
+.idea
