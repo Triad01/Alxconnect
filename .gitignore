@@ -5,3 +5,4 @@ instance/
 ALXENV
 venv
 .idea
+env
