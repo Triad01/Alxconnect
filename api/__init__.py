@@ -3,6 +3,7 @@ from flask_restx import Api
 from api.user.views import user_api
 from api.status.views import api_status
 from api.post.views import post_api
+from api.user.views import auth_api
 
 blueprint = Blueprint('api', __name__, url_prefix='/api/v1')
 api = Api(blueprint, title="AlxConnect Api",
@@ -12,3 +13,4 @@ api = Api(blueprint, title="AlxConnect Api",
 api.add_namespace(api_status)
 api.add_namespace(user_api)
 api.add_namespace(post_api)
+api.add_namespace(auth_api)

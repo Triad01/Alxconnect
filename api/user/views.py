@@ -3,8 +3,19 @@ from flask_restx import Namespace, Resource, fields, abort
 from sqlalchemy.exc import SQLAlchemyError
 from flask import request
 from http import HTTPStatus
-user_api = Namespace("users", description="User Api Routes", ordered=True)
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
 
+
+#API NAMESPACE==========================================================================
+# Create a namespace for the user API
+user_api = Namespace("users", description="User Api Routes", ordered=True)
+auth_api = Namespace("auth", description="Authentication API")
+
+
+#API MODELS =========================================================================
+# model for creating a new user
 create_user_model = user_api.model("CreateUser", {
     "firstname": fields.String(required=True, description="Enter Your FirstName"),
     "lastname": fields.String(required=True, description="Enter your lastname"),
@@ -13,25 +24,36 @@ create_user_model = user_api.model("CreateUser", {
     "password": fields.String(required=True, description="Enter your pasword")
 })
 
+#model for updating a user
 put_model = user_api.model("UpdateUser", {
     "firstname": fields.String(required=True, description="Enter Your FirstName"),
     "lastname": fields.String(required=True),
     "username": fields.String(required=True),
     "email": fields.String(required=True),
 })
+
+#model for creating a post
 create_post_model = user_api.model("Create a post", {
     "content": fields.String(required=True, descriptiion="Enter the post content")
 })
+
+#model for creating a comment
 create_comment_model = user_api.model("Create a comment", {
     "content": fields.String(required=True, descriptiion="Enter the comment content")
 })
 
-# USER SECTION
+# Model for login request
+login_model = auth_api.model("Login", {
+    "email": fields.String(required=True, description="Your email"),
+    "password": fields.String(required=True, description="Your password")
+})
 
+
+
+# USER SECTION ==================================================================================
 
 @user_api.route("/", strict_slashes=False)
 class Get_Post_User(Resource):
-
     """
     summary: User API
 
@@ -52,12 +74,24 @@ class Get_Post_User(Resource):
         """Creates New User"""
         from alxconnect.models import User
         data = request.json
-        if not data:
-            abort(404)
 
-        user = User(**data)
-        user.save()
-        return user.to_json(), 201
+        # Check if request data is provided
+        if not data:
+            abort(404, "No input data provided")
+
+        # Hash the password before saving it to the database
+        hashed_password = generate_password_hash(data['password'])
+
+        # Replace the plain text password with the hashed password in the user data
+        data['password'] = hashed_password
+
+        try:
+            user = User(**data)
+            user.save()
+            return user.to_json(), 201
+        except Exception as e:
+            abort(500, f"An error occurred: {str(e)}")
+
 
 
 @user_api.route("/<int:user_id>", strict_slashes=False)
@@ -115,7 +149,7 @@ class Get_A_User(Resource):
         return {"message": "Successfully updated"}, HTTPStatus.CREATED
 
 
-# POST SECTION
+# POST SECTION ================================================================================================
 @ user_api.route("/<int:user_id>/posts", strict_slashes=False)
 class Get_a_user_post(Resource):
     def get(self, user_id):
@@ -202,7 +236,7 @@ class Get_a_user_post(Resource):
         return {"message": "Deleted Sucessfully"}, HTTPStatus.NO_CONTENT
 
 
-# COMMENTS SECTION
+# COMMENTS SECTION ===============================================================================================
 @ user_api.route("/<int:user_id>/post/<int:post_id>/comments")
 class Get_UserComment_and_Post_Comment(Resource):
     def get(self, user_id, post_id):
@@ -318,3 +352,41 @@ class Get_Signle_comment(Resource):
             return {}, HTTPStatus.OK
 
         return {"Error": "comment not found"}, HTTPStatus.NOT_FOUND
+
+
+
+
+#LOGIN FUNCTIONALITY ============================================================================
+@auth_api.route("/login", strict_slashes=False)
+class Login(Resource):
+    @auth_api.expect(login_model)
+    def post(self):
+        """Authenticate a user and return a JWT token"""
+        from alxconnect.models import User 
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+
+        user = User.query.filter_by(email=email).first()
+        if not user or not check_password_hash(user.password, password):
+            return {"error": "Invalid email or password"}, HTTPStatus.UNAUTHORIZED
+
+        # Create JWT token
+        access_token = create_access_token(identity=user.id)
+        return {"access_token": access_token}, HTTPStatus.OK
+    
+    
+@user_api.route("/profile", strict_slashes=False)
+class UserProfile(Resource):
+    @jwt_required()
+    def get(self):
+        """Get the profile of the currently logged-in user"""
+        from alxconnect.models import User
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        if not user:
+            return {"error": "User not found"}, HTTPStatus.NOT_FOUND
+
+        return user.to_json(), HTTPStatus.OK
+

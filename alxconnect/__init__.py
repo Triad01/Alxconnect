@@ -7,6 +7,9 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_cors import CORS
 
+from flask_jwt_extended import JWTManager
+
+
 
 # Blueprints Modules/Pakages
 from alxconnect.blueprints.about.about import about_view
@@ -16,6 +19,10 @@ from alxconnect.blueprints.errors.errors import error_handlers_view
 
 app = Flask("__name__", template_folder="alxconnect/templates",
             static_folder="alxconnect/static")
+app.config['JWT_SECRET_KEY'] = 'alx-connect_secret_key'
+jwt = JWTManager(app)
+
+
 cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}})
 app.template_folder = "alxconnect/templates"
 app.config.from_object(Config)
