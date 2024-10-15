@@ -6,7 +6,6 @@ from alxconnect.config import Config
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_cors import CORS
-
 from flask_jwt_extended import JWTManager
 
 
