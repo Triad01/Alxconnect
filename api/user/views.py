@@ -395,12 +395,12 @@ class UserProfile(Resource):
         return user.to_json(), HTTPStatus.OK
 
 
-@user_api.route("/logout", strict_slashes=False)
+@auth_api.route("/logout", strict_slashes=False)
 class User_Logout(Resource):
     """
     Log out a user
     """
-    @user_api.response(200, "Sucessfull")
+    @auth_api.response(200, "Sucessfull")
     @jwt_required()
     def get(self):
         """
