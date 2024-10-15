@@ -1,11 +1,26 @@
-from alxconnect import db, login_manager
+from alxconnect import (
+    db,
+    jwt,
+    login_manager
+)
 from datetime import datetime
+from typing import Mapping
 from flask_login import UserMixin
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_is_blacklisted(jwt_header: Mapping[str, str],
+                                  jwt_payload: Mapping[str, str]) -> bool:
+    """
+    Check if user has logged out
+    """
+    jti = jwt_payload['jti']
+    return InvalidToken.verify_jti(jti)
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.query.get(user_id)
 
 
 class BaseModel:
@@ -58,7 +73,7 @@ class User(db.Model, UserMixin, BaseModel):
     email = db.Column(db.String(120), unique=True, nullable=False)
     profile_picture = db.Column(
         db.String(20), nullable=False, default="default.jpg")
-    password = db.Column(db.String(60), nullable=False)
+    password = db.Column(db.String(256), nullable=False)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # RELATIONSHIP BETWEEN USER OTHER MODELS
@@ -113,6 +128,27 @@ class Post(db.Model, BaseModel):
 
     def __repr__(self) -> str:
         return f"{self.content}"
+
+
+class InvalidToken(db.Model, BaseModel):
+    """
+    Model for storing blacklisted tokens
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    jti = db.Column(db.String(36), nullable=False, index=True)
+
+    def __init__(self, jti: str) -> None:
+        self.jti = jti
+
+    def __repr__(self) -> str:
+        return f"InvalidToken(id={self.id}, jti={self.jti})"
+
+    @classmethod
+    def verify_jti(cls, jti: str) -> bool:
+        """
+        Verify the JWT identity
+        """
+        return bool(cls.query.filter_by(jti=jti).first())
 
 
 class Comment(db.Model, BaseModel):

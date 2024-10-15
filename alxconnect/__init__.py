@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from api import blueprint
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -6,10 +10,7 @@ from alxconnect.config import Config
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_cors import CORS
-
 from flask_jwt_extended import JWTManager
-
-
 
 # Blueprints Modules/Pakages
 from alxconnect.blueprints.about.about import about_view
@@ -19,9 +20,6 @@ from alxconnect.blueprints.errors.errors import error_handlers_view
 
 app = Flask("__name__", template_folder="alxconnect/templates",
             static_folder="alxconnect/static")
-app.config['JWT_SECRET_KEY'] = 'alx-connect_secret_key'
-jwt = JWTManager(app)
-
 
 cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}})
 app.template_folder = "alxconnect/templates"
@@ -33,6 +31,7 @@ app.register_blueprint(error_handlers_view)
 app.register_blueprint(blueprint)
 
 bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login_view.login"
 login_manager.login_message_category = "info"
