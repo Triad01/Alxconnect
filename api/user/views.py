@@ -1,7 +1,11 @@
 
 from flask_restx import Namespace, Resource, fields, abort
+from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
-from flask import request
+from flask import (
+    request,
+    jsonify
+)
 from http import HTTPStatus
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash
@@ -33,6 +37,7 @@ put_model = user_api.model("UpdateUser", {
 })
 
 #model for creating a post
+
 create_post_model = user_api.model("Create a post", {
     "content": fields.String(required=True, descriptiion="Enter the post content")
 })
@@ -47,7 +52,6 @@ login_model = auth_api.model("Login", {
     "email": fields.String(required=True, description="Your email"),
     "password": fields.String(required=True, description="Your password")
 })
-
 
 
 # USER SECTION ==================================================================================
@@ -73,25 +77,29 @@ class Get_Post_User(Resource):
     def post(self):
         """Creates New User"""
         from alxconnect.models import User
+        from alxconnect import bcrypt
+
         data = request.json
 
         # Check if request data is provided
         if not data:
             abort(404, "No input data provided")
 
+        user = User.query.filter_by(email=data.get("email")).first()
+        if user:
+            abort(400)
+
         # Hash the password before saving it to the database
         hashed_password = generate_password_hash(data['password'])
 
         # Replace the plain text password with the hashed password in the user data
         data['password'] = hashed_password
-
         try:
             user = User(**data)
             user.save()
             return user.to_json(), 201
         except Exception as e:
             abort(500, f"An error occurred: {str(e)}")
-
 
 
 @user_api.route("/<int:user_id>", strict_slashes=False)
@@ -354,19 +362,17 @@ class Get_Signle_comment(Resource):
         return {"Error": "comment not found"}, HTTPStatus.NOT_FOUND
 
 
-
-
 #LOGIN FUNCTIONALITY ============================================================================
 @auth_api.route("/login", strict_slashes=False)
 class Login(Resource):
     @auth_api.expect(login_model)
     def post(self):
         """Authenticate a user and return a JWT token"""
-        from alxconnect.models import User 
+        from alxconnect.models import User
+
         data = request.json
         email = data.get('email')
         password = data.get('password')
-
         user = User.query.filter_by(email=email).first()
         if not user or not check_password_hash(user.password, password):
             return {"error": "Invalid email or password"}, HTTPStatus.UNAUTHORIZED
@@ -374,8 +380,8 @@ class Login(Resource):
         # Create JWT token
         access_token = create_access_token(identity=user.id)
         return {"access_token": access_token}, HTTPStatus.OK
-    
-    
+
+
 @user_api.route("/profile", strict_slashes=False)
 class UserProfile(Resource):
     @jwt_required()
@@ -384,9 +390,27 @@ class UserProfile(Resource):
         from alxconnect.models import User
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-
         if not user:
             return {"error": "User not found"}, HTTPStatus.NOT_FOUND
-
         return user.to_json(), HTTPStatus.OK
 
+
+@auth_api.route("/logout", strict_slashes=False)
+class User_Logout(Resource):
+    """
+    Log out a user
+    """
+    @auth_api.response(200, "Sucessfull")
+    @jwt_required()
+    def get(self):
+        """
+        Log out a user
+        """
+        from flask_jwt_extended import get_jwt
+        from alxconnect.models import InvalidToken
+
+        jti = get_jwt()['jti']
+        token = InvalidToken(jti=jti)
+        token.save()
+
+        return {}, 200
