@@ -1,6 +1,5 @@
 
 from flask_restx import Namespace, Resource, fields, abort
-from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import SQLAlchemyError
 from flask import (
     request,
@@ -10,6 +9,7 @@ from http import HTTPStatus
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
+import datetime
 
 
 #API NAMESPACE==========================================================================
@@ -414,3 +414,104 @@ class User_Logout(Resource):
         token.save()
 
         return {}, 200
+
+
+# PASSWORD RESET FUNCTIONALITY =================================================================
+
+def send_message(token, recipient_email):
+    from flask_mail import Message, Mail
+    from alxconnect import mail
+    from alxconnect import app
+    mail = Mail(app)
+
+    reset_link = f"http://localhost:9090/auth/reset-password-confirm?token={token}"
+    
+    message = Message("Password Reset Request",
+                      sender="luckypee01@gmail.com", recipients=[recipient_email])
+    
+
+    message.html = f"""
+        <p>Click the link below to reset your password:</p>
+        <a href="{reset_link}">Reset Password</a>
+        <p>If you did not request a password reset, please ignore this email.</p>
+    """
+   
+    mail.send(message)
+
+@auth_api.route("/reset-password", strict_slashes=False)
+class ResetPasswordRequest(Resource):
+    def post(self):
+        """Request password reset"""
+        from alxconnect.models import User
+        data = request.json
+        email = data.get('email')
+        
+        # Check if the email exists in the system
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return {"error": "Email not found"}, HTTPStatus.NOT_FOUND
+        
+        # Generate a JWT token for password reset (valid for 15 minutes)
+        reset_token = create_access_token(identity=user.id, expires_delta=datetime.timedelta(minutes=15))
+        send_message(reset_token, user.email)
+
+        
+        return {"message": "Password reset token sent to your email"}, HTTPStatus.OK
+
+
+# password change functionlity (already logged in users) ======================================
+@auth_api.route("/change-password", strict_slashes=False)
+class ChangePassword(Resource):
+    @jwt_required()  # Only logged-in users can change their password
+    def post(self):
+        """Allow user to change their password"""
+        from alxconnect.models import User
+        data = request.json
+        
+        # Get the current user's ID from the token
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            return {"error": "User not found"}, HTTPStatus.NOT_FOUND
+        
+        # Get the old and new password from the request
+        old_password = data.get('old_password')
+        new_password = data.get('new_password')
+        
+        # Verify the old password
+        if not check_password_hash(user.password, old_password):
+            return {"error": "Incorrect current password"}, HTTPStatus.UNAUTHORIZED
+        
+        # Hash the new password and save it
+        user.password = generate_password_hash(new_password)
+        user.update()
+        
+        return {"message": "Password changed successfully"}, HTTPStatus.OK
+
+
+# password confirmation functionlity ======================================
+@auth_api.route("/reset-password-confirm", strict_slashes=False)
+class ResetPasswordConfirm(Resource):
+    def post(self):
+        """Reset the user's password using the token"""
+        from alxconnect.models import User
+        data = request.json
+        token = data.get('token')
+        new_password = data.get('new_password') # Front end note: Ensure the user enters the new password twice for confirmation and name the fields new_password and confirm_password
+        
+        try:
+            # Decode the token to get the user identity (user id)
+            user_id = get_jwt_identity(token)
+            user = User.query.get(user_id)
+            
+            if not user:
+                return {"error": "Invalid token or user not found"}, HTTPStatus.NOT_FOUND
+
+            # Hash the new password and update the user's record
+            user.password = generate_password_hash(new_password)
+            user.update()
+
+            return {"message": "Password has been reset successfully"}, HTTPStatus.OK
+        except Exception as e:
+            return {"error": str(e)}, HTTPStatus.BAD_REQUEST

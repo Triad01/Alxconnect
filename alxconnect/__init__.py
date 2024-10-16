@@ -11,6 +11,8 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_mail import Mail
+import os
 
 # Blueprints Modules/Pakages
 from alxconnect.blueprints.about.about import about_view
@@ -18,9 +20,11 @@ from alxconnect.blueprints.login.login import login_view
 from alxconnect.blueprints.register.register import register_view
 from alxconnect.blueprints.errors.errors import error_handlers_view
 
+
 app = Flask("__name__", template_folder="alxconnect/templates",
             static_folder="alxconnect/static")
 
+mail = Mail(app)
 cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}})
 app.template_folder = "alxconnect/templates"
 app.config.from_object(Config)
@@ -29,6 +33,15 @@ app.register_blueprint(login_view)
 app.register_blueprint(register_view)
 app.register_blueprint(error_handlers_view)
 app.register_blueprint(blueprint)
+
+
+# mail configuration
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 465
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_USE_TLS"] = False
+app.config["MAIL_USE_SSL"] = True
 
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
