@@ -6,3 +6,4 @@ ALXENV
 venv
 .idea
 env
+.env
