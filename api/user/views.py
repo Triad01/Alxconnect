@@ -5,6 +5,7 @@ from flask import (
     request,
     jsonify
 )
+from flask_cors import cross_origin
 from http import HTTPStatus
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash
@@ -55,7 +56,6 @@ login_model = auth_api.model("Login", {
 
 
 # USER SECTION ==================================================================================
-
 @user_api.route("/", strict_slashes=False)
 class Get_Post_User(Resource):
     """
@@ -71,6 +71,7 @@ class Get_Post_User(Resource):
         from alxconnect.models import User
         return [{obj.to_json()["id"]: obj.to_json()} for obj in User.query.all()]
 
+  
     @user_api.expect(create_user_model)
     @user_api.response(201, "User created successfully.")
     @user_api.response(400, "Validation Error")
