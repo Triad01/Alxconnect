@@ -3,6 +3,10 @@ from alxconnect import (
     jwt,
     login_manager
 )
+from sqlalchemy import event
+import os
+import base64
+from magic import Magic
 from datetime import datetime
 from typing import Mapping
 from flask_login import UserMixin
@@ -43,7 +47,7 @@ class BaseModel:
         self.verified = True
         db.session.commit()
 
-    def rollback():
+    def rollback(self):
         """Rollback a database commit incase of errors"""
         db.session.rollback()
 
@@ -72,7 +76,7 @@ class User(db.Model, UserMixin, BaseModel):
     bio = db.Column(db.String(120), default="Alx learner")
     email = db.Column(db.String(120), unique=True, nullable=False)
     profile_picture = db.Column(
-        db.String(20), nullable=False, default="default.jpg")
+        db.String(256), nullable=False, default="default.png")
     password = db.Column(db.String(256), nullable=False)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -102,6 +106,30 @@ class User(db.Model, UserMixin, BaseModel):
 
     def __repr__(self) -> str:
         return f"User([{self.firstname} {self.lastname}] username: {self.username}, email: {self.email})"
+
+    def to_json(self):
+        user_dict = super().to_json()
+        if user_dict['profile_picture'] == 'default.png':
+            image_path = 'alxconnect/static/uploads/images/default.png'
+        else:
+            image_path = user_dict['profile_picture']
+
+        if os.path.exists(image_path):
+            with open(image_path, 'rb') as image:
+                image_binary = image.read()
+
+                image_base64 = base64.b64encode(image_binary).decode('utf-8')
+                mime = Magic(mime=True)
+                mimetype = mime.from_file(image_path)
+
+                user_dict.update(
+                    profile_picture={
+                        'image_base64': image_base64,
+                        'mimetype': mimetype
+                    }
+                )
+
+                return user_dict
 
 
 class Post(db.Model, BaseModel):
@@ -253,3 +281,14 @@ class Course(db.Model):
 
 # def __repr__(self) -> str:
 #     return f"Status {self.status}"
+
+
+# Event listener for deleting the profile image before the user is deleted
+@event.listens_for(User, 'before_delete')
+def delete_user_image(mapper, connection, target):
+    if target.profile_picture != 'default.png':
+        if os.path.exists(target.profile_picture):
+            try:
+                os.remove(target.profile_picture)
+            except Exception:
+                pass
