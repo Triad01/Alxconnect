@@ -46,6 +46,7 @@ users = [
     User(firstname="Diana", lastname="Wilson", username="dwilson",
          email="diana.wilson@yahoo.com", password=generate_password_hash("password981"))
 ]
+
 db.session.add_all(users)
 db.session.commit()
 print("Users Created Sucessfully")

@@ -2,14 +2,13 @@
 from flask_restx import Namespace, Resource, fields, abort
 from sqlalchemy.exc import SQLAlchemyError
 from flask import request
-from werkzeug.utils import secure_filename
 from http import HTTPStatus
+from utils import save_image
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 import datetime
 import os
-import uuid
 
 
 #API NAMESPACE==========================================================================
@@ -69,7 +68,7 @@ class Get_Post_User(Resource):
     def get(self):
         """Returns All User"""
         from alxconnect.models import User
-        return [{obj.to_json()["id"]: obj.to_json()} for obj in User.query.all()]
+        return [obj.to_json() for obj in User.query.all()]
 
     @user_api.expect(create_user_model)
     @user_api.response(201, "User created successfully.")
@@ -128,14 +127,16 @@ class Get_A_User(Resource):
         user = User.query.get(user_id)
         if not user:
             return "Enter a valid id", HTTPStatus.NOT_IMPLEMENTED
+
         user.delete()
         return {"message": "Deleted successfully"}, HTTPStatus.NO_CONTENT
 
     @ user_api.response(200, description="Succesfully updated")
-    def put(self, user_id):
+    def patch(self, user_id):
         """Updates a User"""
         from alxconnect.models import User
         # check if user is available
+
         user = User.query.get(user_id)
         if not user:
             return "Enter a valid id", HTTPStatus.NOT_ACCEPTABLE
@@ -147,15 +148,7 @@ class Get_A_User(Resource):
         profile_picture_url = None
         if 'profile_picture' in request.files:
             profile_picture = request.files['profile_picture']
-            path = 'alxconnect/static/uploads/images'
-            if not os.path.exists(path):
-                os.makedirs(path)
-
-            f_name = profile_picture.filename
-            if profile_picture and f_name:
-                filename = str(uuid.uuid4()) + secure_filename(f_name)
-                profile_picture_url = os.path.join(path, filename)
-                profile_picture.save(profile_picture_url)
+            profile_picture_url = save_image(profile_picture)
 
             if user.profile_picture != 'default.png':
                 if os.path.exists(user.profile_picture):
@@ -168,9 +161,10 @@ class Get_A_User(Resource):
                 if hasattr(user, key):
                     setattr(user, key, value)
 
-            user.profile_picture = profile_picture_url
-            user.update()
+            if profile_picture_url:
+                user.profile_picture = profile_picture_url
 
+            user.update()
         except SQLAlchemyError as error:
             user.rollback()
             return {"error": error}
@@ -184,13 +178,25 @@ class Get_a_user_post(Resource):
     def get(self, user_id):
         """Returns all post created by a user"""
         from alxconnect.models import User
-        user = User.query.get_or_404(user_id)
 
-        return [{post.id: post.to_json()} for post in user.posts]
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('page_size', 10, type=int)
+
+        user = User.query.get_or_404(user_id)
+        posts = user.posts.paginate(page=page, per_page=per_page)
+        return {
+            'posts': [post.to_json() for post in posts.items],
+            'page': posts.page,
+            'page_size': posts.per_page,
+            'total_page_items': len(posts.items),
+            'prev_page': posts.prev_num,
+            'next_page': posts.next_num,
+            'total': posts.total,
+            'total_pages': posts.pages
+        }, 200
 
     @ user_api.response(201, "Post created successfully.")
     @ user_api.response(400, "Validation Error")
-    @ user_api.expect(create_post_model)
     def post(self, user_id):
         """Creates a Post for a User"""
         from alxconnect.models import Post, User
@@ -199,11 +205,19 @@ class Get_a_user_post(Resource):
         if not user:
             return {"Error": "invalid user"}, HTTPStatus.NOT_FOUND
 
-        data = request.json
+        data = request.form
         if not data:
             return {"Error": "Enter Content"}, HTTPStatus.NO_CONTENT
 
         post = Post(user_id=user.id, content=data.get("content"))
+        image_url = None
+        if 'image' in request.files:
+            image = request.files['image']
+            image_url = save_image(image)
+
+        if image_url:
+            post.image_url = image_url
+
         post.save()
         return {"created": "Sucessfull"}, HTTPStatus.CREATED
 
@@ -226,10 +240,10 @@ class Get_a_user_post(Resource):
             based on the post_id
         """
         from alxconnect.models import User
+
         user = User.query.get_or_404(user_id)
         return [{post.id: post.to_json()} for post in user.posts if post.id == post_id]
 
-    @ user_api.expect(create_post_model)
     def patch(self, user_id, post_id):
         """Updates a Post"""
         from alxconnect.models import User, Post
@@ -241,13 +255,23 @@ class Get_a_user_post(Resource):
         post = Post.query.get(post_id)
         if post.user_id != user.id:
             return {"Error": "Post Not Found"}, HTTPStatus.NOT_FOUND
-        data = request.json
+
+        data = request.form
         if not data:
             return {"Error": "Empty content"},  HTTPStatus.NOT_FOUND
 
-        post.content = data.get("content")
-        post.update()
+        if data.get('content'):
+            post.content = data.get("content")
 
+        image_url = None
+        if 'image' in request.files:
+            image = request.files['image']
+            image_url = save_image(image)
+
+        if image_url:
+            post.image_url = image_url
+
+        post.update()
         return {"updated": "success"}, 201
 
     def delete(self, user_id, post_id):
@@ -261,6 +285,7 @@ class Get_a_user_post(Resource):
         post = Post.query.get(post_id)
         if post.user_id != user.id:
             return {"Error": "Post Not Found"}, HTTPStatus.NOT_FOUND
+
         post.delete()
         return {"message": "Deleted Sucessfully"}, HTTPStatus.NO_CONTENT
 
@@ -270,18 +295,38 @@ class Get_a_user_post(Resource):
 class Get_UserComment_and_Post_Comment(Resource):
     def get(self, user_id, post_id):
         """Get all user comment"""
-        from alxconnect.models import User, Post
+        from alxconnect.models import User, Post, Comment
+
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('page_size', 10, type=int)
 
         user = User.query.get(user_id)
         if not user:
             return {"Error": "User Not Found"}, HTTPStatus.NOT_FOUND
+
         post = Post.query.get(post_id)
         if not post:
             return {"Error": "Post Not Found"}, HTTPStatus.NOT_FOUND
-        comments = [
-            comment for comment in post.comments if comment.user_id == user_id]
 
-        return [{user_comment.id: user_comment.to_json()} for user_comment in comments], HTTPStatus.OK
+        comments = Comment.query.filter_by(
+            user_id=user_id,
+            post_id=post_id
+        ).paginate(page=page, per_page=per_page)
+
+        return {
+            'comments': [comment.to_json() for comment in comments.items],
+            'page': comments.page,
+            'page_size': comments.per_page,
+            'total_page_items': len(comments.items),
+            'prev_page': comments.prev_num,
+            'next_page': comments.next_num,
+            'total': comments.total,
+            'total_pages': comments.pages
+        }, 200
+        # comments = [
+        #     comment for comment in post.comments if comment.user_id == user_id]
+
+        # return [{user_comment.id: user_comment.to_json()} for user_comment in comments], HTTPStatus.OK
 
     @ user_api.expect(create_comment_model)
     def post(self, user_id, post_id):
