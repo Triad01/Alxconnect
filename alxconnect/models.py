@@ -1,12 +1,16 @@
+import copy
 from alxconnect import (
     db,
     jwt,
     login_manager
 )
+from typing import (
+    Any,
+    Dict
+)
 from sqlalchemy import event
 import os
-import base64
-from magic import Magic
+from utils import convert_image_to_base64
 from datetime import datetime
 from typing import Mapping
 from flask_login import UserMixin
@@ -29,6 +33,9 @@ def load_user(user_id):
 
 class BaseModel:
     """BaseModel For Other Models"""
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now)
 
     def save(self):
         """Saves a model to the database
@@ -44,6 +51,7 @@ class BaseModel:
     def update(self):
         """Update a Model instance in the database"""
         # db.session.merge(self)
+        self.updated_at = datetime.now()
         self.verified = True
         db.session.commit()
 
@@ -51,39 +59,49 @@ class BaseModel:
         """Rollback a database commit incase of errors"""
         db.session.rollback()
 
-    def to_json(self):
-        """Convert instance into dict format"""
-        dictionary = {}
-        for key in self.__mapper__.c.keys():
-            value = getattr(self, key)
-            if key == "password":
-                continue
-            if isinstance(value, datetime):
-                dictionary[key] = value.isoformat()
+    def to_json(self) -> Dict[str, Any]:
+        obj = copy.deepcopy(vars(self))
+        obj['created_at'] = self.created_at.isoformat()
+        obj['updated_at'] = self.updated_at.isoformat()
+        if '_sa_instance_state' in obj:
+            del obj['_sa_instance_state']
+
+        if 'password' in obj:
+            del obj['password']
+
+        if 'profile_picture' in obj:
+            if obj['profile_picture'] == 'default.png':
+                image_path = 'alxconnect/static/uploads/images/default.png'
             else:
-                dictionary[key] = value
-        return dictionary
+                image_path = obj['profile_picture']
+
+            profile_picture = convert_image_to_base64(image_path)
+            obj.update(profile_picture=profile_picture)
+
+        elif 'image_url' in obj:
+            image_path = obj.pop('image_url')
+            image = convert_image_to_base64(image_path)
+            obj.update(image=image)
+
+        return obj
 
 
-class User(db.Model, UserMixin, BaseModel):
+class User(UserMixin, BaseModel, db.Model):
     """
         User model for the database
     """
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'users'
     firstname = db.Column(db.String(60), nullable=False)
     lastname = db.Column(db.String(60), nullable=False)
     username = db.Column(db.String(60), unique=True, nullable=False)
     bio = db.Column(db.String(120), default="Alx learner")
     email = db.Column(db.String(120), unique=True, nullable=False)
-    profile_picture = db.Column(
-        db.String(256), nullable=False, default="default.png")
+    profile_picture = db.Column(db.String(256), nullable=False, default="default.png")
     password = db.Column(db.String(256), nullable=False)
-    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # RELATIONSHIP BETWEEN USER OTHER MODELS
-
     posts = db.relationship("Post", backref="user",
-                            lazy=True, cascade="all, delete, delete-orphan")
+                            lazy='dynamic', cascade="all, delete, delete-orphan")
     comments = db.relationship(
         "Comment", backref="user", lazy="dynamic", cascade="all, delete, delete-orphan")
 
@@ -97,62 +115,22 @@ class User(db.Model, UserMixin, BaseModel):
     # message = db.relationship(
     #     "Message", backref="user", lazy=True, cascade="all, delete, delete-orphan")
 
-    def __init__(self, firstname, lastname, username, email, password) -> None:
-        self.firstname = firstname
-        self.lastname = lastname
-        self.username = username
-        self.email = email
-        self.password = password
-
     def __repr__(self) -> str:
         return f"User([{self.firstname} {self.lastname}] username: {self.username}, email: {self.email})"
 
-    def to_json(self):
-        user_dict = super().to_json()
-        if user_dict['profile_picture'] == 'default.png':
-            image_path = 'alxconnect/static/uploads/images/default.png'
-        else:
-            image_path = user_dict['profile_picture']
 
-        if os.path.exists(image_path):
-            with open(image_path, 'rb') as image:
-                image_binary = image.read()
-
-                image_base64 = base64.b64encode(image_binary).decode('utf-8')
-                mime = Magic(mime=True)
-                mimetype = mime.from_file(image_path)
-
-                user_dict.update(
-                    profile_picture={
-                        'image_base64': image_base64,
-                        'mimetype': mimetype
-                    }
-                )
-
-                return user_dict
-
-
-class Post(db.Model, BaseModel):
+class Post(BaseModel, db.Model):
     """Post model for the database"""
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'posts'
     content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    image_url = db.Column(db.String(256))
     comments = db.relationship(
         "Comment", backref="post", lazy="dynamic", cascade="all, delete, delete-orphan")
-    created_at = db.Column(db.DateTime, nullable=False,
-                           default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False,
-                           default=datetime.utcnow)
 
     """Not yet implemented"""
 
     # likes = db.relationship("Like", backref="post", lazy=True)
-
-    # image = db.Column(db.String(20), nullable=False, default="default.jpg")
-
-    def __init__(self, user_id, content) -> None:
-        self.user_id = user_id
-        self.content = content
 
     def __repr__(self) -> str:
         return f"{self.content}"
@@ -162,11 +140,8 @@ class InvalidToken(db.Model, BaseModel):
     """
     Model for storing blacklisted tokens
     """
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'invalid_tokens'
     jti = db.Column(db.String(36), nullable=False, index=True)
-
-    def __init__(self, jti: str) -> None:
-        self.jti = jti
 
     def __repr__(self) -> str:
         return f"InvalidToken(id={self.id}, jti={self.jti})"
@@ -179,61 +154,38 @@ class InvalidToken(db.Model, BaseModel):
         return bool(cls.query.filter_by(jti=jti).first())
 
 
-class Comment(db.Model, BaseModel):
+class Comment(BaseModel, db.Model):
     """Comment model for the database"""
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'comments'
     content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    post_id = db.Column(db.Integer, db.ForeignKey("post.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    post_id = db.Column(db.Integer, db.ForeignKey("posts.id"))
     likes = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, nullable=False,
-                           default=datetime.utcnow)
-
-    def __init__(self, post_id, user_id, content) -> None:
-        self.post_id = post_id
-        self.user_id = user_id
-        self.content = content
 
     def __repr__(self) -> str:
         return f"Content: {self.content}"
 
 
-class Notification(db.Model, BaseModel):
+class Notification(BaseModel, db.Model):
     """Notification model for the database"""
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    created_at = db.Column(db.DateTime, nullable=False,
-                           default=datetime.utcnow)
+    __tablename__ = 'notifications'
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     content = db.Column(db.Text, nullable=False)
     read = db.Column(db.Boolean, default=False)
-
-    def __init__(self, user_id, content) -> None:
-        self.user_id = user_id
-        self.content = content
 
     def __repr__(self) -> str:
         return f"Content: {self.content} Read: {self.read}"
 
 
-class Course(db.Model):
+class Course(BaseModel, db.Model):
     """Course model for the database"""
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'courses'
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.Text, nullable=False)
     instructor = db.Column(db.String(120), nullable=False)
     duration = db.Column(db.Time, nullable=False)
-    image_url = db.Column(db.String(60), default="default.jpg")
-    created_at = db.Column(db.DateTime, nullable=False,
-                           default=datetime.utcnow)
-    uploaded_at = db.Column(db.DateTime, nullable=False,
-                            default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-
-    def __init__(self, title, description, instructor, duration) -> None:
-        self.title = title
-        self.description = description
-        self.instructor = instructor
-        self.duration = duration
+    image_url = db.Column(db.String(256), default="default.jpg")
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     def __repr__(self) -> str:
         return f"Title: {self.title} Description: {self.description} Instructor: {self.instructor} Duration: {self.duration}"
@@ -241,14 +193,12 @@ class Course(db.Model):
 
 """Bugs That i am facing for now would be fixed soon"""
 """Followers Model"""
-# class Message(db.Model):
+# class Message(BaseModel, db.Model):
 #     """Message model for the database"""
-#     msg_id = db.Column(db.Integer, primary_key=True)
-#     sender_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-#     receiver_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+#     __tablename__ = 'messages'
+#     sender_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+#     receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 #     content = db.Column(db.Text, nullable=False)
-#     created_at = db.Column(db.DateTime, nullable=False,
-#                            default=datetime.utcnow)
 #     recieved_at = db.Column(db.DateTime, nullable=False,
 #                             default=datetime.utcnow)
 
@@ -260,13 +210,11 @@ class Course(db.Model):
 #        return f"Content: {self.content} Recieved at: {self.recieved_at} Sender: {self.sender_id} Receiver: {self.receiver_id}"
 
 """Followers Model"""
-# class Followers(db.Model):
+# class Followers(BaseModel, db.Model):
 #     """Followers model for the database"""
-#     id = db.Column(db.Integer, primary_key=True)
-#     sender_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-#     # receiver_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-#     created_at = db.Column(db.DateTime, nullable=False,
-#                            default=datetime.utcnow)
+#     __tablename__ = 'followers'
+#     sender_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+#     # receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 #     status = db.Column(db.Boolean, default=False)
 
 # Define relationships explicitly
@@ -283,12 +231,26 @@ class Course(db.Model):
 #     return f"Status {self.status}"
 
 
-# Event listener for deleting the profile image before the user is deleted
-@event.listens_for(User, 'before_delete')
-def delete_user_image(mapper, connection, target):
-    if target.profile_picture != 'default.png':
-        if os.path.exists(target.profile_picture):
+def delete_image(mapper, connection, target, field):
+    """
+    Deletes the image file associated with the target model instance.
+    """
+    image_url = getattr(target, field)
+    if image_url and image_url != 'default.png':
+        if os.path.exists(image_url):
             try:
-                os.remove(target.profile_picture)
+                os.remove(image_url)
             except Exception:
                 pass
+
+
+# Event listener for deleting a profile image before a user is deleted
+@event.listens_for(User, 'before_delete')
+def delete_user_image(mapper, connection, target):
+    delete_image(mapper, connection, target, 'profile_picture')
+
+
+# Event listener for deleting a post image before post instance is deleted
+@event.listens_for(Post, 'before_delete')
+def delete_post_image(mapper, connection, target):
+    delete_image(mapper, connection, target, 'image_url')

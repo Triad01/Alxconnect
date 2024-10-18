@@ -19,7 +19,7 @@ class Get_and_Create_Post(Resource):
             abort(404)
 
         return {
-            'posts': [post.to_json()for post in posts.items],
+            'posts': [post.to_json() for post in posts.items],
             'page': posts.page,
             'page_size': posts.per_page,
             'total_page_items': len(posts.items),
@@ -59,7 +59,7 @@ class Post_Comment(Resource):
             abort(404)
 
         return {
-            'comments': [comment.to_json()for comment in comments.items],
+            'comments': [comment.to_json() for comment in comments.items],
             'page': comments.page,
             'page_size': comments.per_page,
             'total_page_items': len(comments.items),
