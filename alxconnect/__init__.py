@@ -56,12 +56,7 @@ login_manager.login_message = "Please login to access this page"
 
 # Base class for all models
 
-
-class Base(DeclarativeBase):
-    pass
-
-
-db = SQLAlchemy(model_class=Base)
+db = SQLAlchemy()
 db.init_app(app)
 
 # api models
