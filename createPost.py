@@ -18,7 +18,7 @@ def create_dummy_posts(num_users=20, posts_per_user=5):
         for _ in range(posts_per_user):
             post = Post(
                 user_id=user.id,
-                content=f"Sample content for post by user {user.id}",
+                content=f"Sample content for post by user {user.id}"
             )
             db.session.add(post)
 
