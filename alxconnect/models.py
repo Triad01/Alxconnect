@@ -14,6 +14,7 @@ from utils import convert_image_to_base64
 from datetime import datetime
 from typing import Mapping
 from flask_login import UserMixin
+# from sqlalchemy.orm.collections import InstrumentedList
 
 
 @jwt.token_in_blocklist_loader

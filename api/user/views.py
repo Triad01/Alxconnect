@@ -135,14 +135,15 @@ class Get_A_User(Resource):
     def patch(self, user_id):
         """Updates a User"""
         from alxconnect.models import User
-        # check if user is available
-
+        # Check if user is available
         user = User.query.get(user_id)
         if not user:
-            return "Enter a valid id", HTTPStatus.NOT_ACCEPTABLE
+            return {"message": "Enter a valid id"}, HTTPStatus.NOT_ACCEPTABLE
 
-        data = request.form
-        if not data:
+        data = request.form.to_dict() 
+        files = request.files
+    
+        if not data and not files:
             abort(400, message="Enter valid data")
 
         profile_picture_url = None
@@ -164,12 +165,41 @@ class Get_A_User(Resource):
             if profile_picture_url:
                 user.profile_picture = profile_picture_url
 
-            user.update()
+            user.update()  # Make sure this commits the changes to the database
         except SQLAlchemyError as error:
             user.rollback()
-            return {"error": error}
+            return {"error": str(error)}, HTTPStatus.INTERNAL_SERVER_ERROR
 
-        return {"message": "Successfully updated"}, HTTPStatus.CREATED
+    # Prepare the response data with updated user information
+        updated_user_info = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "profile_picture": user.profile_picture  # Assuming this returns the new URL/path
+        }
+
+        return {"message": "Successfully updated", "user": updated_user_info}, HTTPStatus.OK
+
+# routes/user.py
+
+@user_api.route("/users/search", strict_slashes=False)
+class UserSearch(Resource):
+    @user_api.response(200, "Success")
+    @user_api.response(404, "No users found")
+    def get(self):
+        """Search for users by username"""
+        from alxconnect.models import User
+
+        username = request.args.get('username', '', type=str)
+        if not username:
+            return {"error": "No username provided"}, HTTPStatus.BAD_REQUEST
+        
+        users = User.query.filter(User.username.ilike(f'%{username}%')).all()
+        if not users:
+            return {"message": "No users found"}, HTTPStatus.NOT_FOUND
+        
+        return [user.to_json() for user in users], HTTPStatus.OK
+
 
 
 # POST SECTION ================================================================================================
@@ -177,13 +207,13 @@ class Get_A_User(Resource):
 class Get_a_user_post(Resource):
     def get(self, user_id):
         """Returns all post created by a user"""
-        from alxconnect.models import User
+        from alxconnect.models import User, Post
 
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('page_size', 10, type=int)
 
         user = User.query.get_or_404(user_id)
-        posts = user.posts.paginate(page=page, per_page=per_page)
+        posts = user.posts.order_by(Post.created_at.desc()).paginate(page=page, per_page=per_page) # return posts according to the most recent
         return {
             'posts': [post.to_json() for post in posts.items],
             'page': posts.page,
@@ -442,11 +472,20 @@ class Login(Resource):
         user = User.query.filter_by(email=email).first()
         if not user or not check_password_hash(user.password, password):
             return {"error": "Invalid email or password"}, HTTPStatus.UNAUTHORIZED
-
-        # Create JWT token
-        access_token = create_access_token(identity=user.id)
-        return {"access_token": access_token}, HTTPStatus.OK
-
+        
+        profile_picture = user.profile_picture if user.profile_picture else 'default.png'
+        access_token = create_access_token(identity=user.id,additional_claims={"username": user.username,"email": user.email,"profile_picture": profile_picture
+    })
+        
+        return {
+            "access_token": access_token,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "profile_picture": profile_picture
+            }
+        }, HTTPStatus.OK
 
 @user_api.route("/profile", strict_slashes=False)
 class UserProfile(Resource):
@@ -564,7 +603,7 @@ class ResetPasswordConfirm(Resource):
         from alxconnect.models import User
         data = request.json
         token = data.get('token')
-        new_password = data.get('new_password') # Front end note: Ensure the user enters the new password twice for confirmation and name the fields new_password and confirm_password
+        new_password = data.get('new_password') # Front end note: Effa, Ensure the user enters the new password twice for confirmation and name the fields new_password and confirm_password
 
         try:
             # Decode the token to get the user identity (user id)
