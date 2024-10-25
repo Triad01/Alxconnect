@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from api import blueprint
-from flask import Flask
+from flask import Flask, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from alxconnect.config import Config
@@ -25,7 +25,9 @@ app = Flask("__name__", template_folder="alxconnect/templates",
             static_folder="alxconnect/static")
 
 mail = Mail(app)
-cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}})
+cors = CORS(app, resources={r"/api/v1*": {"origins": "*"}}, supports_credentials=True)
+
+
 app.template_folder = "alxconnect/templates"
 app.config.from_object(Config)
 app.register_blueprint(about_view)
@@ -42,6 +44,7 @@ app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 app.config["MAIL_USE_TLS"] = False
 app.config["MAIL_USE_SSL"] = True
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)

@@ -1,5 +1,6 @@
 from flask_restx import Namespace, Resource, abort
 from flask import request
+from sqlalchemy import desc
 
 
 post_api = Namespace("posts", description="Post Api Routes")
@@ -14,7 +15,8 @@ class Get_and_Create_Post(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('page_size', 10, type=int)
 
-        posts = Post.query.paginate(page=page, per_page=per_page)
+        # posts = Post.query.paginate(page=page, per_page=per_page)
+        posts = Post.query.order_by(Post.created_at.desc()).paginate(page=page, per_page=per_page)
         if not posts.items:
             abort(404)
 
@@ -49,7 +51,9 @@ class Post_Comment(Resource):
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('page_size', 10, type=int)
 
-        post = Post.query.get(post_id)
+        # post = Post.query.get(post_id)
+        # post = Post.query.order_by(desc(Post.created_at)).paginate(page=page, per_page=per_page) # type: ignore
+
         if not post:
             abort(404, message={"Error": "Post Not Found"})
         # print(post.comments[0])

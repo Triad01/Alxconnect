@@ -14,6 +14,7 @@ from utils import convert_image_to_base64
 from datetime import datetime
 from typing import Mapping
 from flask_login import UserMixin
+# from sqlalchemy.orm.collections import InstrumentedList
 
 
 @jwt.token_in_blocklist_loader
@@ -63,6 +64,7 @@ class BaseModel:
         obj = copy.deepcopy(vars(self))
         obj['created_at'] = self.created_at.isoformat()
         obj['updated_at'] = self.updated_at.isoformat()
+
         if '_sa_instance_state' in obj:
             del obj['_sa_instance_state']
 
@@ -125,8 +127,24 @@ class Post(BaseModel, db.Model):
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     image_url = db.Column(db.String(256))
+    created_at = db.Column(db.DateTime, default=datetime.now) 
     comments = db.relationship(
         "Comment", backref="post", lazy="dynamic", cascade="all, delete, delete-orphan")
+    
+    
+    def to_json(self):
+        post_data = super().to_json()
+        post_data['user'] = {
+            "id": self.user.id,
+            "firstname": self.user.firstname,
+            "lastname": self.user.lastname,
+            "username": self.user.username,
+            "profile_picture": self.user.profile_picture 
+        }
+        return post_data
+
+
+
 
     """Not yet implemented"""
 
